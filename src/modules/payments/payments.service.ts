@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment, PaymentStatus } from './entities/payment.entity';
 import { VehiclesService } from '../vehicles/vehicles.service';
+import { VehicleStatus } from '../vehicles/entities/vehicle.entity';
 
 @Injectable()
 export class PaymentsService {
@@ -12,26 +13,28 @@ export class PaymentsService {
     private vehiclesService: VehiclesService,
   ) {}
 
-  async create(vehicleId: number, amount: number): Promise<Payment> {
-    // Verify vehicle exists and is sold
-    const vehicle = await this.vehiclesService.findOne(vehicleId);
-    
-    // Check if payment already exists
-    const existing = await this.paymentsRepository.findOne({
-      where: { vehicleId },
-    });
-
-    if (existing) {
-      return existing;
-    }
-
-    const payment = this.paymentsRepository.create({
-      vehicleId,
-      amount,
-      status: PaymentStatus.PENDING,
-    });
-    return this.paymentsRepository.save(payment);
+async create(vehicleId: number, amount: number): Promise<Payment> {
+  const vehicle = await this.vehiclesService.findOne(vehicleId);
+  
+  if (vehicle.status !== VehicleStatus.SOLD) {
+    throw new BadRequestException('Can only pay for sold vehicles');
   }
+  
+  const existing = await this.paymentsRepository.findOne({
+    where: { vehicleId },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const payment = this.paymentsRepository.create({
+    vehicleId,
+    amount,
+    status: PaymentStatus.PENDING,
+  });
+  return this.paymentsRepository.save(payment);
+}
 
   async confirmPayment(id: number): Promise<Payment> {
     const payment = await this.paymentsRepository.findOne({ where: { id } });

@@ -5,6 +5,7 @@ import { User } from '../users/entities/user.entity';
 import { Vehicle } from '../vehicles/entities/vehicle.entity';
 import { Payment, PaymentStatus } from '../payments/entities/payment.entity';
 import { PaymentsService } from '../payments/payments.service';
+import { VehicleStatus } from '../vehicles/entities/vehicle.entity';
 
 @Injectable()
 export class AnalyticsService {
@@ -24,11 +25,12 @@ export class AnalyticsService {
     return this.vehiclesRepository.count();
   }
 
-  async getSoldVehiclesCount(): Promise<number> {
-    return this.vehiclesRepository.count({
-      where: { status: 'sold' as any },
-    });
-  }
+
+async getSoldVehiclesCount(): Promise<number> {
+  return this.vehiclesRepository.count({
+    where: { status: VehicleStatus.SOLD },  // ✅ Use enum
+  });
+}
 
   async getTotalRevenue(): Promise<number> {
     return this.paymentsService.getTotalRevenue();
