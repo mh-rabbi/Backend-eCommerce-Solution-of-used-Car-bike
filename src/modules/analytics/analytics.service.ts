@@ -37,18 +37,24 @@ async getSoldVehiclesCount(): Promise<number> {
   }
 
   async getAnalytics() {
-    const [totalUsers, totalVehicles, soldVehicles, revenue] = await Promise.all([
+    const [totalUsers, totalVehicles, soldVehicles, revenue, pendingVehicles, approvedVehicles, rejectedVehicles] = await Promise.all([
       this.getTotalUsers(),
       this.getTotalVehicles(),
       this.getSoldVehiclesCount(),
       this.getTotalRevenue(),
+      this.vehiclesRepository.count({ where: { status: VehicleStatus.PENDING } }),
+      this.vehiclesRepository.count({ where: { status: VehicleStatus.APPROVED } }),
+      this.vehiclesRepository.count({ where: { status: VehicleStatus.REJECTED } }),
     ]);
 
     return {
       totalUsers,
       totalVehicles,
       soldVehicles,
-      revenue,
+      totalRevenue: revenue || 0,
+      pendingVehicles,
+      approvedVehicles,
+      rejectedVehicles,
     };
   }
 

@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 import * as bcrypt from 'bcrypt';
@@ -9,6 +10,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -46,9 +48,14 @@ export class AuthService {
     }
 
     const payload = { sub: user.id, email: user.email };
+    const secret = this.configService.get<string>('JWT_SECRET') || 'your-secret-key';
     const token = this.jwtService.sign(payload);
     
     console.log('Login successful for user:', user.id);
+    console.log('🔑 Token generated (length:', token.length, ')');
+    console.log('🔑 Token preview:', token.substring(0, 50) + '...');
+    console.log('🔐 JWT Secret being used for signing:', secret.substring(0, 10) + '...');
+    console.log('🔐 Secret length:', secret.length);
     
     return {
       access_token: token,

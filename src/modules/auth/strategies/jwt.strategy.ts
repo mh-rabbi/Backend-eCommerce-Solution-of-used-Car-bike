@@ -1,21 +1,27 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../users/users.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private usersService: UsersService) {
+  constructor(
+    private usersService: UsersService,
+    private configService: ConfigService,
+  ) {
+    const secret = configService.get<string>('JWT_SECRET') || 'your-secret-key';
+    
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'your-secret-key',
+      secretOrKey: secret,
     });
     
     // CRITICAL FIX: Log JWT secret being used (first few chars only)
-    const secret = process.env.JWT_SECRET || 'your-secret-key';
     console.log('🔐 JWT Strategy initialized');
     console.log('🔐 Using secret:', secret.substring(0, 10) + '...');
+    console.log('🔐 Secret length:', secret.length);
   }
 
   async validate(payload: any) {
@@ -23,6 +29,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     console.log('JWT Payload:', JSON.stringify(payload, null, 2));
     console.log('Payload type:', typeof payload);
     console.log('Payload keys:', payload ? Object.keys(payload) : 'null');
+    
+    // CRITICAL FIX: Log the secret being used for verification
+    const currentSecret = this.configService.get<string>('JWT_SECRET') || 'your-secret-key';
+    console.log('🔐 Secret being used for verification:', currentSecret.substring(0, 10) + '...');
+    console.log('🔐 Secret length:', currentSecret.length);
     
     // CRITICAL FIX: Check payload structure first
     if (!payload) {
