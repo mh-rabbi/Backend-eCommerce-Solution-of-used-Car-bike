@@ -4,12 +4,13 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminGuard } from '../../common/guards/admin.guard';
 import { Vehicle } from '../vehicles/entities/vehicle.entity';
-import { VehiclesModule } from '../vehicles/vehicles.module';  // ✅ ADD THIS
+import { User } from '../users/entities/user.entity';
+import { VehiclesModule } from '../vehicles/vehicles.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Vehicle]),
-    VehiclesModule,  // ✅ ADD THIS - makes VehiclesService available
+    TypeOrmModule.forFeature([Vehicle, User]),
+    VehiclesModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminGuard],

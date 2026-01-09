@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
@@ -31,6 +31,22 @@ export class AdminController {
   @Get('vehicles')
   async getAllVehicles() {
     return this.adminService.getPendingVehicles();
+  }
+
+  // User management endpoints
+  @Get('users')
+  async getAllUsers() {
+    return this.adminService.getAllUsers();
+  }
+
+  @Get('users/:id')
+  async getUserById(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getUserById(id);
+  }
+
+  @Delete('users/:id')
+  async deleteUser(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.deleteUser(id);
   }
 }
 
