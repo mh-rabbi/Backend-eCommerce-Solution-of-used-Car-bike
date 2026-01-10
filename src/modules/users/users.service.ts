@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -27,12 +27,38 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { id } });
   }
 
-async findByEmail(email: string): Promise<User | null> {
-  return this.usersRepository.findOne({ where: { email } });
-}
+  async findByEmail(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { email } });
+  }
 
   async findAll(): Promise<User[]> {
     return this.usersRepository.find();
+  }
+
+  async updateProfile(id: number, updateData: Partial<User>): Promise<User> {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Don't allow updating sensitive fields
+    delete updateData.password;
+    delete updateData.role;
+    delete updateData.id;
+
+    // Update user fields
+    Object.assign(user, updateData);
+    return this.usersRepository.save(user);
+  }
+
+  async updateProfileImage(id: number, imagePath: string): Promise<User> {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.profileImage = imagePath;
+    return this.usersRepository.save(user);
   }
 }
 

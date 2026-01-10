@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 export enum UserRole {
   USER = 'user',
@@ -26,7 +26,25 @@ export class User {
   })
   role: UserRole;
 
+  @Column({ nullable: true })
+  profileImage: string;
+
+  @Column({ nullable: true })
+  address: string;
+
+  @Column({ nullable: true })
+  streetNo: string;
+
+  @Column({ nullable: true })
+  postalCode: string;
+
+  @Column({ nullable: true })
+  phone: string;
+
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
 
