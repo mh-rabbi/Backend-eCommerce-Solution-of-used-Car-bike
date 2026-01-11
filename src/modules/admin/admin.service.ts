@@ -3,12 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { VehicleStatus } from '../vehicles/entities/vehicle.entity';
+import { VehiclesGateway } from '../vehicles/vehicles.gateway';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class AdminService {
   constructor(
     private vehiclesService: VehiclesService,
+    private vehiclesGateway: VehiclesGateway,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
   ) {}
@@ -18,11 +20,21 @@ export class AdminService {
   }
 
   async approveVehicle(id: number) {
-    return this.vehiclesService.updateStatus(id, VehicleStatus.APPROVED);
+    const vehicle = await this.vehiclesService.updateStatus(id, VehicleStatus.APPROVED);
+    
+    // Emit real-time update to all connected clients
+    this.vehiclesGateway.emitVehicleApproved(vehicle);
+    
+    return vehicle;
   }
 
   async rejectVehicle(id: number) {
-    return this.vehiclesService.updateStatus(id, VehicleStatus.REJECTED);
+    const vehicle = await this.vehiclesService.updateStatus(id, VehicleStatus.REJECTED);
+    
+    // Emit real-time update to all connected clients
+    this.vehiclesGateway.emitVehicleRejected(id);
+    
+    return vehicle;
   }
 
   async getSoldVehicles() {
