@@ -18,6 +18,7 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { VehiclesService } from './vehicles.service';
+import { VehiclesGateway } from './vehicles.gateway';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
@@ -25,7 +26,10 @@ import { VehicleStatus } from './entities/vehicle.entity';
 
 @Controller('vehicles')
 export class VehiclesController {
-  constructor(private vehiclesService: VehiclesService) {
+  constructor(
+    private vehiclesService: VehiclesService,
+    private vehiclesGateway: VehiclesGateway,
+  ) {
     // CRITICAL FIX: Ensure uploads directory exists on startup
     const uploadDir = join(process.cwd(), 'uploads');
     if (!existsSync(uploadDir)) {
@@ -92,7 +96,12 @@ export class VehiclesController {
   @Put(':id/sold')
   @UseGuards(JwtAuthGuard)
   async markAsSold(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-    return this.vehiclesService.markAsSold(id, user.id);
+    const vehicle = await this.vehiclesService.markAsSold(id, user.id);
+    
+    // Emit real-time update to all connected clients
+    this.vehiclesGateway.emitVehicleSold(vehicle);
+    
+    return vehicle;
   }
 
   @Post('upload')
