@@ -20,7 +20,7 @@ export class PaymentsService {
     @InjectRepository(Payment)
     private paymentsRepository: Repository<Payment>,
     private vehiclesService: VehiclesService,
-  ) {}
+  ) { }
 
   /**
    * Calculate platform fee based on vehicle type
@@ -36,7 +36,7 @@ export class PaymentsService {
    */
   async initializePayment(vehicleId: number, paymentMethod?: PaymentMethod): Promise<Payment> {
     this.logger.log(`Initializing payment for vehicle ID: ${vehicleId}`);
-    
+
     const vehicle = await this.vehiclesService.findOne(vehicleId);
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found');
@@ -54,7 +54,7 @@ export class PaymentsService {
 
     // Calculate platform fee
     const { fee, percentage } = this.calculatePlatformFee(vehicle.type, vehicle.price);
-    
+
     // Generate unique transaction ID
     const transactionId = `TXN${Date.now()}${vehicleId}`;
 
@@ -70,7 +70,7 @@ export class PaymentsService {
 
     const savedPayment = await this.paymentsRepository.save(payment);
     this.logger.log(`Payment initialized: ${savedPayment.id}, Amount: ${fee}, TxnID: ${transactionId}`);
-    
+
     return savedPayment;
   }
 
@@ -189,8 +189,32 @@ export class PaymentsService {
       .select('SUM(payment.amount)', 'total')
       .where('payment.status = :status', { status: PaymentStatus.PAID })
       .getRawOne();
-    
+
     return Number(result?.total) || 0;
+  }
+
+  async getRevenueByDateRange(startDate: Date, endDate: Date): Promise<number> {
+    const result = await this.paymentsRepository
+      .createQueryBuilder('payment')
+      .select('SUM(payment.amount)', 'total')
+      .where('payment.status = :status', { status: PaymentStatus.PAID })
+      .andWhere('payment.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .getRawOne();
+
+    return Number(result?.total) || 0;
+  }
+
+  async getAverageFeePercentage(): Promise<number> {
+    const result = await this.paymentsRepository
+      .createQueryBuilder('payment')
+      .select('AVG(payment.feePercentage)', 'avg')
+      .where('payment.status = :status', { status: PaymentStatus.PAID })
+      .getRawOne();
+
+    return Number(result?.avg) || 0;
   }
 
   async getPaymentStats(): Promise<{

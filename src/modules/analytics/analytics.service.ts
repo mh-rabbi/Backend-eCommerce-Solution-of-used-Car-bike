@@ -15,7 +15,7 @@ export class AnalyticsService {
     @InjectRepository(Vehicle)
     private vehiclesRepository: Repository<Vehicle>,
     private paymentsService: PaymentsService,
-  ) {}
+  ) { }
 
   async getTotalUsers(): Promise<number> {
     return this.usersRepository.count();
@@ -26,24 +26,45 @@ export class AnalyticsService {
   }
 
 
-async getSoldVehiclesCount(): Promise<number> {
-  return this.vehiclesRepository.count({
-    where: { status: VehicleStatus.SOLD },  // ✅ Use enum
-  });
-}
+  async getSoldVehiclesCount(): Promise<number> {
+    return this.vehiclesRepository.count({
+      where: { status: VehicleStatus.SOLD },  // ✅ Use enum
+    });
+  }
 
   async getTotalRevenue(): Promise<number> {
     return this.paymentsService.getTotalRevenue();
   }
 
   async getAnalytics() {
+    // Calculate Growth Rate (Month over Month)
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const [currentMonthRevenue, lastMonthRevenue, avgMargin] = await Promise.all([
+      this.paymentsService.getRevenueByDateRange(currentMonthStart, currentMonthEnd),
+      this.paymentsService.getRevenueByDateRange(lastMonthStart, lastMonthEnd),
+      this.paymentsService.getAverageFeePercentage(),
+    ]);
+
+    let growthRate = 0;
+    if (lastMonthRevenue === 0) {
+      growthRate = currentMonthRevenue > 0 ? 100 : 0;
+    } else {
+      growthRate = ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+    }
+
     const [
-      totalUsers, 
-      totalVehicles, 
-      soldVehicles, 
-      revenue, 
-      pendingVehicles, 
-      approvedVehicles, 
+      totalUsers,
+      totalVehicles,
+      soldVehicles,
+      revenue,
+      pendingVehicles,
+      approvedVehicles,
       rejectedVehicles,
       paymentStats,
     ] = await Promise.all([
@@ -63,6 +84,8 @@ async getSoldVehiclesCount(): Promise<number> {
       soldVehicles,
       totalRevenue: revenue || 0,
       platformFeeCollected: revenue || 0, // Platform fee revenue
+      growthRate: Math.round(growthRate * 10) / 10, // Round to 1 decimal
+      avgMargin: Math.round(avgMargin * 100) / 100, // Round to 2 decimals
       pendingVehicles,
       approvedVehicles,
       rejectedVehicles,
