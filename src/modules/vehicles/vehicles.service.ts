@@ -9,9 +9,27 @@ export class VehiclesService {
   constructor(
     @InjectRepository(Vehicle)
     private vehiclesRepository: Repository<Vehicle>,
-  ) {}
+  ) { }
 
   async create(createVehicleDto: CreateVehicleDto, sellerId: number): Promise<Vehicle> {
+    // Sanitize image URLs to ensure they are relative paths
+    if (createVehicleDto.images) {
+      createVehicleDto.images = createVehicleDto.images.map(url => {
+        // If it's a full URL (starts with http), extract just the path
+        if (typeof url === 'string' && url.startsWith('http')) {
+          try {
+            const urlObj = new URL(url);
+            // Return only the pathname (e.g., /uploads/image.jpg)
+            return urlObj.pathname;
+          } catch (e) {
+            console.warn('Failed to parse image URL:', url);
+            return url;
+          }
+        }
+        return url;
+      });
+    }
+
     const vehicle = this.vehiclesRepository.create({
       ...createVehicleDto,
       sellerId,
