@@ -90,6 +90,8 @@ export class AnalyticsService {
       rejectedVehicles,
       paymentStats,
       topSellers,
+      monthlyRevenue,
+      weeklyRevenue,
     ] = await Promise.all([
       this.getTotalUsers(),
       this.getTotalVehicles(),
@@ -100,6 +102,8 @@ export class AnalyticsService {
       this.vehiclesRepository.count({ where: { status: VehicleStatus.REJECTED } }),
       this.paymentsService.getPaymentStats(),
       this.getTopSellers(),
+      this.paymentsService.getMonthlyRevenue(now.getFullYear()),
+      this.paymentsService.getWeeklyRevenue(),
     ]);
 
     return {
@@ -118,6 +122,10 @@ export class AnalyticsService {
         paidCount: paymentStats.paidCount,
         pendingCount: paymentStats.pendingCount,
         failedCount: paymentStats.failedCount,
+      },
+      revenueChartData: {
+        monthly: monthlyRevenue,
+        weekly: weeklyRevenue,
       },
     };
   }

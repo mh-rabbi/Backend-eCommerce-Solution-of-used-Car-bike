@@ -217,6 +217,74 @@ export class PaymentsService {
     return Number(result?.avg) || 0;
   }
 
+  async getMonthlyRevenue(year: number): Promise<Array<{ name: string, revenue: number, sales: number }>> {
+    const result = await this.paymentsRepository
+      .createQueryBuilder('payment')
+      .select("DATE_FORMAT(payment.createdAt, '%b')", 'name')
+      .addSelect('SUM(payment.amount)', 'revenue')
+      .addSelect('COUNT(payment.id)', 'sales')
+      .where('payment.status = :status', { status: PaymentStatus.PAID })
+      .andWhere('YEAR(payment.createdAt) = :year', { year })
+      .groupBy("DATE_FORMAT(payment.createdAt, '%b'), MONTH(payment.createdAt)")
+      .orderBy("MONTH(payment.createdAt)", "ASC")
+      .getRawMany();
+
+    // Map strict DB results to a full year array if needed, or return as is.
+    // For simplicity, let's ensure we return all months or at least the ones with data correctly formatted.
+    // The current query returns only months with data.
+    // Let's create a template for all months to ensure the chart looks correct even with partial data.
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    // Create a map for quick lookup
+    const resultMap = new Map(result.map(item => [item.name, item]));
+
+    return months.map(month => {
+      const data = resultMap.get(month);
+      return {
+        name: month,
+        revenue: data ? Number(data.revenue) : 0,
+        sales: data ? Number(data.sales) : 0
+      };
+    });
+  }
+
+  async getWeeklyRevenue(): Promise<Array<{ name: string, revenue: number, sales: number }>> {
+    // Get last 7 days including today
+    const result = await this.paymentsRepository
+      .createQueryBuilder('payment')
+      .select("DATE_FORMAT(payment.createdAt, '%a')", 'name') // Mon, Tue...
+      .addSelect('SUM(payment.amount)', 'revenue')
+      .addSelect('COUNT(payment.id)', 'sales')
+      .addSelect("DATE_FORMAT(payment.createdAt, '%Y-%m-%d')", 'date') // specific date for ordering/filling
+      .where('payment.status = :status', { status: PaymentStatus.PAID })
+      .andWhere("payment.createdAt >= DATE_SUB(NOW(), INTERVAL 6 DAY)")
+      .groupBy("DATE_FORMAT(payment.createdAt, '%a'), DATE_FORMAT(payment.createdAt, '%Y-%m-%d')")
+      .orderBy("DATE_FORMAT(payment.createdAt, '%Y-%m-%d')", "ASC")
+      .getRawMany();
+
+    // Fill in missing days for the last 7 days
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push({
+        name: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        date: d.toISOString().split('T')[0]
+      });
+    }
+
+    const resultMap = new Map(result.map(item => [item.date, item]));
+
+    return days.map(day => {
+      const data = resultMap.get(day.date);
+      return {
+        name: day.name,
+        revenue: data ? Number(data.revenue) : 0,
+        sales: data ? Number(data.sales) : 0
+      };
+    });
+  }
+
   async getPaymentStats(): Promise<{
     totalRevenue: number;
     paidCount: number;
