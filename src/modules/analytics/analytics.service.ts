@@ -25,6 +25,28 @@ export class AnalyticsService {
     return this.vehiclesRepository.count();
   }
 
+  async getTopSellers() {
+    const topSellers = await this.vehiclesRepository
+      .createQueryBuilder('vehicle')
+      .leftJoinAndSelect('vehicle.seller', 'seller')
+      .select([
+        'seller.name as name',
+        'COUNT(vehicle.id) as sales',
+        'SUM(vehicle.price) as revenue'
+      ])
+      .where('vehicle.status = :status', { status: VehicleStatus.SOLD })
+      .groupBy('seller.id')
+      .orderBy('sales', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    return topSellers.map(seller => ({
+      name: seller.name || 'Unknown',
+      sales: Number(seller.sales),
+      revenue: Number(seller.revenue)
+    }));
+  }
+
 
   async getSoldVehiclesCount(): Promise<number> {
     return this.vehiclesRepository.count({
@@ -67,6 +89,7 @@ export class AnalyticsService {
       approvedVehicles,
       rejectedVehicles,
       paymentStats,
+      topSellers,
     ] = await Promise.all([
       this.getTotalUsers(),
       this.getTotalVehicles(),
@@ -76,6 +99,7 @@ export class AnalyticsService {
       this.vehiclesRepository.count({ where: { status: VehicleStatus.APPROVED } }),
       this.vehiclesRepository.count({ where: { status: VehicleStatus.REJECTED } }),
       this.paymentsService.getPaymentStats(),
+      this.getTopSellers(),
     ]);
 
     return {
@@ -89,6 +113,7 @@ export class AnalyticsService {
       pendingVehicles,
       approvedVehicles,
       rejectedVehicles,
+      topSellers,
       payments: {
         paidCount: paymentStats.paidCount,
         pendingCount: paymentStats.pendingCount,
