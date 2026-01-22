@@ -63,13 +63,16 @@ export class PaymentsService {
       amount: fee,
       vehiclePrice: vehicle.price,
       feePercentage: percentage,
-      status: PaymentStatus.PENDING,
+      status: PaymentStatus.PAID, // Directly set to PAID
       paymentMethod: paymentMethod || PaymentMethod.SSLCOMMERZ,
       transactionId,
     });
 
     const savedPayment = await this.paymentsRepository.save(payment);
     this.logger.log(`Payment initialized: ${savedPayment.id}, Amount: ${fee}, TxnID: ${transactionId}`);
+
+    // Update vehicle status if needed (e.g., mark as SOLD)
+    // await this.vehiclesService.updateStatus(vehicleId, VehicleStatus.SOLD); // Uncomment if required
 
     return savedPayment;
   }
@@ -96,6 +99,8 @@ export class PaymentsService {
       payment.cardType = ipnData.card_type;
       payment.bankTransactionId = ipnData.bank_tran_id;
       this.logger.log(`Payment marked as PAID: ${payment.id}`);
+      // Optionally update vehicle status here as well
+      // await this.vehiclesService.updateStatus(payment.vehicleId, VehicleStatus.SOLD); // Uncomment if required
     } else if (ipnData.status === 'FAILED' || ipnData.status === 'CANCELLED') {
       payment.status = PaymentStatus.FAILED;
       this.logger.log(`Payment marked as FAILED: ${payment.id}`);
@@ -104,18 +109,7 @@ export class PaymentsService {
     return this.paymentsRepository.save(payment);
   }
 
-  /**
-   * Confirm payment manually (for admin or direct confirmation)
-   */
-  async confirmPayment(id: number): Promise<Payment> {
-    const payment = await this.paymentsRepository.findOne({ where: { id } });
-    if (!payment) {
-      throw new NotFoundException('Payment not found');
-    }
-    payment.status = PaymentStatus.PAID;
-    this.logger.log(`Payment manually confirmed: ${id}`);
-    return this.paymentsRepository.save(payment);
-  }
+
 
   /**
    * Mark payment as failed
@@ -164,16 +158,7 @@ export class PaymentsService {
     });
   }
 
-  async getPendingPayments(): Promise<Payment[]> {
-    return this.paymentsRepository.find({
-      where: [
-        { status: PaymentStatus.PENDING },
-        { status: PaymentStatus.FAILED },
-      ],
-      relations: ['vehicle', 'vehicle.seller'],
-      order: { createdAt: 'DESC' },
-    });
-  }
+
 
   async getPaidPayments(): Promise<Payment[]> {
     return this.paymentsRepository.find({

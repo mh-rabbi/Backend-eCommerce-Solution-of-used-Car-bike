@@ -107,14 +107,7 @@ export class PaymentsController {
     return { success: false, message: 'Payment cancelled' };
   }
 
-  /**
-   * Confirm payment manually (admin action)
-   */
-  @Post(':id/confirm')
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  async confirmPayment(@Param('id', ParseIntPipe) id: number) {
-    return this.paymentsService.confirmPayment(id);
-  }
+
 
   /**
    * Get payment by vehicle ID
@@ -152,14 +145,7 @@ export class PaymentsController {
     return this.paymentsService.getPaymentStats();
   }
 
-  /**
-   * Get pending payments (admin only) - includes failed payments
-   */
-  @Get('pending')
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  async getPendingPayments() {
-    return this.paymentsService.getPendingPayments();
-  }
+
 
   /**
    * Get paid payments (admin only)
