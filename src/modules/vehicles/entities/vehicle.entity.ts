@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Payment } from '../../payments/entities/payment.entity';
 
 export enum VehicleType {
   CAR = 'car',
@@ -55,5 +56,8 @@ export class Vehicle {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @OneToMany(() => Payment, (payment) => payment.vehicle)
+  payments: Payment[];
 }
 

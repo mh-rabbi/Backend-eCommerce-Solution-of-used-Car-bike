@@ -50,7 +50,7 @@ export class VehiclesService {
   async findOne(id: number): Promise<Vehicle> {
     const vehicle = await this.vehiclesRepository.findOne({
       where: { id },
-      relations: ['seller'],
+      relations: ['seller', 'payments'],
     });
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found');
@@ -61,6 +61,7 @@ export class VehiclesService {
   async findBySeller(sellerId: number): Promise<Vehicle[]> {
     return this.vehiclesRepository.find({
       where: { sellerId },
+      relations: ['payments'],
       order: { createdAt: 'DESC' },
     });
   }
