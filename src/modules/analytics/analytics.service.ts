@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThanOrEqual, Between } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Vehicle } from '../vehicles/entities/vehicle.entity';
 import { Payment, PaymentStatus } from '../payments/entities/payment.entity';
@@ -59,26 +59,66 @@ export class AnalyticsService {
   }
 
   async getAnalytics() {
-    // Calculate Growth Rate (Month over Month)
+    // Calculate dates for MoM (Month over Month)
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
+    // Helper to calculate percentage growth
+    const calculateGrowth = (current: number, last: number) => {
+      if (last === 0) return current > 0 ? 100 : 0;
+      return ((current - last) / last) * 100;
+    };
+
+    // 1. Revenue and Revenue Growth
     const [currentMonthRevenue, lastMonthRevenue, avgMargin] = await Promise.all([
-      this.paymentsService.getRevenueByDateRange(currentMonthStart, currentMonthEnd),
+      this.paymentsService.getRevenueByDateRange(currentMonthStart, now),
       this.paymentsService.getRevenueByDateRange(lastMonthStart, lastMonthEnd),
       this.paymentsService.getAverageFeePercentage(),
     ]);
 
-    let growthRate = 0;
-    if (lastMonthRevenue === 0) {
-      growthRate = currentMonthRevenue > 0 ? 100 : 0;
-    } else {
-      growthRate = ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
-    }
+    // 2. Vehicles Sold Growth
+    const [currentMonthSold, lastMonthSold] = await Promise.all([
+      this.vehiclesRepository.count({
+        where: {
+          status: VehicleStatus.SOLD,
+          createdAt: MoreThanOrEqual(currentMonthStart)
+        } as any
+      }),
+      this.vehiclesRepository.count({
+        where: {
+          status: VehicleStatus.SOLD,
+          createdAt: Between(lastMonthStart, lastMonthEnd)
+        } as any
+      })
+    ]);
+
+    // 3. Active Listings Growth (Approved vehicles)
+    const [currentMonthApproved, lastMonthApproved] = await Promise.all([
+      this.vehiclesRepository.count({
+        where: {
+          status: VehicleStatus.APPROVED,
+          createdAt: MoreThanOrEqual(currentMonthStart)
+        } as any
+      }),
+      this.vehiclesRepository.count({
+        where: {
+          status: VehicleStatus.APPROVED,
+          createdAt: Between(lastMonthStart, lastMonthEnd)
+        } as any
+      })
+    ]);
+
+    // 4. Conversion Rate Growth
+    // We compare conversion rate of THIS month vs conversion rate of LAST month
+    const [currentMonthTotal, lastMonthTotal] = await Promise.all([
+      this.vehiclesRepository.count({ where: { createdAt: MoreThanOrEqual(currentMonthStart) } as any }),
+      this.vehiclesRepository.count({ where: { createdAt: Between(lastMonthStart, lastMonthEnd) } as any })
+    ]);
+
+    const currentConvRate = currentMonthTotal > 0 ? (currentMonthSold / currentMonthTotal) : 0;
+    const lastConvRate = lastMonthTotal > 0 ? (lastMonthSold / lastMonthTotal) : 0;
 
     const [
       totalUsers,
@@ -111,9 +151,12 @@ export class AnalyticsService {
       totalVehicles,
       soldVehicles,
       totalRevenue: revenue || 0,
-      platformFeeCollected: revenue || 0, // Platform fee revenue
-      growthRate: Math.round(growthRate * 10) / 10, // Round to 1 decimal
-      avgMargin: Math.round(avgMargin * 100) / 100, // Round to 2 decimals
+      platformFeeCollected: revenue || 0,
+      revenueGrowth: Math.round(calculateGrowth(currentMonthRevenue, lastMonthRevenue) * 10) / 10,
+      vehiclesSoldGrowth: Math.round(calculateGrowth(currentMonthSold, lastMonthSold) * 10) / 10,
+      activeListingsGrowth: Math.round(calculateGrowth(currentMonthApproved, lastMonthApproved) * 10) / 10,
+      conversionRateGrowth: Math.round(calculateGrowth(currentConvRate, lastConvRate) * 10) / 10,
+      avgMargin: Math.round(avgMargin * 100) / 100,
       pendingVehicles,
       approvedVehicles,
       rejectedVehicles,
