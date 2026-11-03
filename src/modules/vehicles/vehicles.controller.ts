@@ -1,3 +1,4 @@
+import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -25,6 +26,7 @@ import { CurrentUser } from '../../common/decorators/user.decorator';
 import { VehicleStatus } from './entities/vehicle.entity';
 
 @Controller('vehicles')
+@ApiTags('Vehicles')
 export class VehiclesController {
   constructor(
     private vehiclesService: VehiclesService,
@@ -39,6 +41,7 @@ export class VehiclesController {
   }
 
   @Post()
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async create(@Body() createVehicleDto: CreateVehicleDto, @CurrentUser() user: any) {
     try {
@@ -74,6 +77,7 @@ export class VehiclesController {
   }
 
   @Get()
+  @ApiQuery({ name: 'status', enum: VehicleStatus, required: false })
   async findAll(@Query('status') status?: VehicleStatus) {
     if (status) {
       return this.vehiclesService.findAll(status);
@@ -82,6 +86,7 @@ export class VehiclesController {
   }
 
   @Get('my-vehicles')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async getMyVehicles(@CurrentUser() user: any) {
     console.log('Fetching vehicles for user:', user.id);
@@ -94,6 +99,7 @@ export class VehiclesController {
   }
 
   @Put(':id/sold')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async markAsSold(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
     const vehicle = await this.vehiclesService.markAsSold(id, user.id);
@@ -105,6 +111,9 @@ export class VehiclesController {
   }
 
   @Post('upload')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { images: { type: 'array', items: { type: 'string', format: 'binary' } } } } })
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FilesInterceptor('images', 10, {

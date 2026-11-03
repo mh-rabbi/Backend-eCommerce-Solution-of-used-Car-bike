@@ -1,3 +1,4 @@
+import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { 
   Controller, 
   Get, 
@@ -13,6 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
@@ -27,6 +29,8 @@ const getUploadDir = () => {
 };
 
 @Controller('users')
+@ApiTags('Users')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private usersService: UsersService) {
@@ -49,14 +53,7 @@ export class UsersController {
   @Put('profile')
   async updateProfile(
     @CurrentUser() user: any,
-    @Body() updateData: {
-      name?: string;
-      email?: string;
-      address?: string;
-      streetNo?: string;
-      postalCode?: string;
-      phone?: string;
-    },
+    @Body() updateData: UpdateProfileDto,
   ) {
     console.log('📥 PUT /users/profile - User:', user?.id, 'Data:', updateData);
     const updatedUser = await this.usersService.updateProfile(user.id, updateData);
@@ -66,6 +63,8 @@ export class UsersController {
   }
 
   @Post('profile/upload-image')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({

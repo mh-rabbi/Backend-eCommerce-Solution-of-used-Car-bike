@@ -1,3 +1,4 @@
+import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Controller, Get, Post, Body, Param, UseGuards, ParseIntPipe, Query, Logger, HttpCode, HttpStatus } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
@@ -8,6 +9,7 @@ import { VehicleType } from '../vehicles/entities/vehicle.entity';
 import { InitializePaymentDto, SSLCommerzIpnDto } from './dto/payment.dto';
 
 @Controller('payments')
+@ApiTags('Payments')
 export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);
 
@@ -20,6 +22,7 @@ export class PaymentsController {
    * Initialize payment for a vehicle post (called after vehicle is created)
    */
   @Post('initialize')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async initializePayment(@Body() dto: InitializePaymentDto) {
     this.logger.log(`Initializing payment for vehicle: ${dto.vehicleId}`);
@@ -30,6 +33,7 @@ export class PaymentsController {
    * Calculate platform fee for a vehicle (used by mobile app checkout page)
    */
   @Get('calculate-fee/:vehicleId')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async calculateFee(@Param('vehicleId', ParseIntPipe) vehicleId: number) {
     this.logger.log(`Calculating fee for vehicle: ${vehicleId}`);
@@ -113,6 +117,7 @@ export class PaymentsController {
    * Get payment by vehicle ID
    */
   @Get('vehicle/:vehicleId')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async getPaymentByVehicle(@Param('vehicleId', ParseIntPipe) vehicleId: number) {
     return this.paymentsService.findByVehicle(vehicleId);
@@ -122,6 +127,7 @@ export class PaymentsController {
    * Get payment by transaction ID
    */
   @Get('transaction/:transactionId')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async getPaymentByTransaction(@Param('transactionId') transactionId: string) {
     return this.paymentsService.findByTransactionId(transactionId);
@@ -131,7 +137,9 @@ export class PaymentsController {
    * Get all payments (admin only)
    */
   @Get()
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiQuery({ name: 'status', enum: PaymentStatus, required: false })
   async findAll(@Query('status') status?: PaymentStatus) {
     return this.paymentsService.findAll(status);
   }
@@ -140,6 +148,7 @@ export class PaymentsController {
    * Get payment statistics (admin only)
    */
   @Get('stats')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, AdminGuard)
   async getPaymentStats() {
     return this.paymentsService.getPaymentStats();
@@ -151,6 +160,7 @@ export class PaymentsController {
    * Get paid payments (admin only)
    */
   @Get('paid')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, AdminGuard)
   async getPaidPayments() {
     return this.paymentsService.getPaidPayments();

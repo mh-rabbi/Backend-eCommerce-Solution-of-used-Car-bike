@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
+import { setupSwagger, SWAGGER_PATH } from './swagger_docs';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -58,11 +59,14 @@ async function bootstrap() {
     },
   }));
 
+  setupSwagger(app);
+
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0'); // CRITICAL FIX: Bind to all interfaces
   
   console.log('=================================');
   console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`📖 Swagger docs: http://localhost:${port}/${SWAGGER_PATH}`);
   console.log(`📁 Uploads directory: ${uploadDir}`);
   console.log(`🌐 CORS enabled for development`);
   console.log('=================================');
